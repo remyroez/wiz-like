@@ -6,90 +6,58 @@
 #include <memory>
 #include <stb_image.h>
 
-template<typename T>
-using SDL_Pointer = std::shared_ptr<T>;
+#include "application.hpp"
+#include "util.hpp"
 
-template<typename T, typename Creator, typename Deleter, typename... Args>
-inline auto SDL_Make(Creator* creator, Deleter* deleter, Args&&... args) {
-	return SDL_Pointer<T>(creator(std::forward<Args>(args)...), deleter);
-}
+namespace {
 
-#define DEFINE_MAKE(NAME, T, CREATOR, DESTROYER) \
-template<typename... Args> \
-inline auto NAME(Args&&... args) { \
-	return SDL_Make<T>(CREATOR, DESTROYER, std::forward<Args>(args)...); \
-}
+class game : public application {
+public:
+	game() {}
+	virtual ~game() { finalize(); }
 
-DEFINE_MAKE(make_window, SDL_Window, SDL_CreateWindow, SDL_DestroyWindow);
-DEFINE_MAKE(make_renderer, SDL_Renderer, SDL_CreateRenderer, SDL_DestroyRenderer);
-DEFINE_MAKE(make_texture_from_surface, SDL_Texture, SDL_CreateTextureFromSurface, SDL_DestroyTexture);
+	bool initialize() {
+		if (initialized()) {
 
-DEFINE_MAKE(load_bmp, SDL_Surface, SDL_LoadBMP, SDL_FreeSurface);
+		} else if (application::initialize("wizlike", 640, 400, SDL_WINDOW_RESIZABLE, SDL_RENDERER_ACCELERATED)) {
+			if (auto bmp = SDL_LoadBMP("test.bmp")) {
+				_tex = make_texture_from_surface(renderer(), bmp);
+				SDL_FreeSurface(bmp);
+			}
 
-#define SDL_PrintError(NAME) { std::cerr << #NAME << ": " << SDL_GetError() << std::endl; }
+			SDL_SetWindowMinimumSize(window(), 320, 200);
+			SDL_RenderSetLogicalSize(renderer(), 320, 200);
+			SDL_RenderSetIntegerScale(renderer(), SDL_TRUE);
+		}
+		return initialized();
+	}
+
+protected:
+	void finalize() {
+		_tex.reset();
+	}
+
+	virtual void update(float deltatime = 0.f) override {
+
+	}
+
+	virtual void draw() override {
+		static const SDL_Rect rect{ 0, 0, 320, 240 };
+
+		SDL_RenderClear(renderer());
+		if (_tex) SDL_RenderCopy(renderer(), _tex.get(), nullptr, &rect);
+	}
+
+private:
+	SDL_Pointer<SDL_Texture> _tex;
+};
+
+} // namespace game
 
 int main(int argc, char **argv) {
-
-	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
-		SDL_PrintError(SDL_Init);
-		return EXIT_FAILURE;
+	int result = 0;
+	if (::game app{}; app.initialize()) {
+		result = app.boot();
 	}
-
-	auto window = make_window(
-		"wizlike",
-		SDL_WINDOWPOS_CENTERED,
-		SDL_WINDOWPOS_CENTERED,
-		640,
-		480,
-		SDL_WINDOW_RESIZABLE
-	);
-	if (!window) {
-		SDL_PrintError(SDL_CreateWindow);
-		SDL_Quit();
-		return EXIT_FAILURE;
-	}
-
-	auto renderer = make_renderer(window.get(), -1, SDL_RENDERER_ACCELERATED);
-	if (!renderer) {
-		SDL_PrintError(SDL_CreateRenderer);
-		window.reset();
-		SDL_Quit();
-		return EXIT_FAILURE;
-	}
-
-	auto bmp = SDL_LoadBMP("test.bmp");
-	auto tex = make_texture_from_surface(renderer.get(), bmp);
-	if (bmp) SDL_FreeSurface(bmp);
-
-	SDL_RenderSetLogicalSize(renderer.get(), 320, 240);
-	SDL_RenderSetIntegerScale(renderer.get(), SDL_TRUE);
-
-	SDL_Rect rect{ 0, 0, 320, 240 };
-
-	SDL_Event event;
-	bool running = true;
-	while (running) {
-		while (SDL_PollEvent(&event)) {
-			switch (event.type) {
-			case SDL_QUIT:
-				running = false;
-				break;
-			}
-		}
-
-		SDL_RenderClear(renderer.get());
-		if (tex) SDL_RenderCopy(renderer.get(), tex.get(), nullptr, &rect);
-
-		SDL_RenderPresent(renderer.get());
-
-		SDL_Delay(1000 / 60);
-	}
-
-	tex.reset();
-	renderer.reset();
-	window.reset();
-
-	SDL_Quit();
-
-	return 0;
+	return result;
 }
