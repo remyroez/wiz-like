@@ -55,4 +55,30 @@ struct SDL_Context {
 	bool _initialized = false;
 };
 
+int SDL_GetMouseLogicalState(SDL_Window *window, SDL_Renderer *renderer, int* x, int* y) {
+	int mouse_x, mouse_y;
+	int state = SDL_GetMouseState(&mouse_x, &mouse_y);
+
+	int window_w, window_h;
+	SDL_GetWindowSize(window, &window_w, &window_h);
+	int center_x = window_w / 2, center_y = window_h;
+
+	int logical_w, logical_h;
+	SDL_RenderGetLogicalSize(renderer, &logical_w, &logical_h);
+
+	float scale_x, scale_y;
+	SDL_RenderGetScale(renderer, &scale_x, &scale_y);
+
+	int offset_x = (window_w - logical_w * scale_x) / 2;
+	int offset_y = (window_h - logical_h * scale_y) / 2;
+
+	int logical_mouse_x = (mouse_x - offset_x) / scale_x;
+	int logical_mouse_y = (mouse_y - offset_y) / scale_y;
+
+	if (x) *x = logical_mouse_x;
+	if (y) *y = logical_mouse_y;
+
+	return state;
+}
+
 #endif // UTIL_HPP_

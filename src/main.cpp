@@ -20,7 +20,7 @@ public:
 		if (initialized()) {
 
 		} else if (application::initialize("wizlike", 640, 400, SDL_WINDOW_RESIZABLE, SDL_RENDERER_ACCELERATED)) {
-			if (auto bmp = SDL_LoadBMP("test.bmp")) {
+			if (auto bmp = SDL_LoadBMP("assets/test.bmp")) {
 				_tex = make_texture_from_surface(renderer(), bmp);
 				SDL_FreeSurface(bmp);
 			}
@@ -42,10 +42,17 @@ protected:
 	}
 
 	virtual void draw() override {
-		static const SDL_Rect rect{ 0, 0, 320, 240 };
+		static const SDL_Rect src_rect{ 0, 0, 320, 200 };
+		static SDL_Rect src_rect2{ 0, 0, 32, 32 };
+		static SDL_Rect target_rect{ 0, 0, 32, 32 };
+
+		SDL_GetMouseLogicalState(window(), renderer(), &target_rect.x, &target_rect.y);
 
 		SDL_RenderClear(renderer());
-		if (_tex) SDL_RenderCopy(renderer(), _tex.get(), nullptr, &rect);
+		if (_tex) {
+			SDL_RenderCopy(renderer(), _tex.get(), &src_rect, nullptr);
+			SDL_RenderCopy(renderer(), _tex.get(), &src_rect2, &target_rect);
+		}
 	}
 
 private:
