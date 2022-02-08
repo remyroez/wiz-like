@@ -3,6 +3,9 @@
 
 #include <SDL.h>
 #include <memory>
+#include <string>
+#include <vector>
+#include <charconv>
 
 template<typename T>
 using SDL_Pointer = std::shared_ptr<T>;
@@ -79,6 +82,31 @@ int SDL_GetMouseLogicalState(SDL_Window *window, SDL_Renderer *renderer, int* x,
 	if (y) *y = logical_mouse_y;
 
 	return state;
+}
+
+std::vector<std::string> split(const std::string& s, char delim) {
+	std::vector<std::string> elems;
+	std::string item;
+	for (char ch : s) {
+		if (ch == delim) {
+			if (!item.empty())
+				elems.push_back(item);
+			item.clear();
+
+		} else {
+			item += ch;
+		}
+	}
+	if (!item.empty())
+		elems.push_back(item);
+	return elems;
+}
+
+int to_int(const std::string& str) {
+	int value = 0;
+	if (auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value); ec == std::errc{}) {
+	}
+	return value;
 }
 
 #endif // UTIL_HPP_

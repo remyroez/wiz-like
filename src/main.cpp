@@ -118,9 +118,17 @@ public:
 						_font.info.aa = info.attribute("aa").as_int() != 0;
 						{
 							auto padding = info.attribute("padding").as_string();
+							auto list = split(padding, ',');
+							if (list.size() > 0) _font.info.padding.up = to_int(list[0]);
+							if (list.size() > 1) _font.info.padding.right = to_int(list[1]);
+							if (list.size() > 2) _font.info.padding.down = to_int(list[2]);
+							if (list.size() > 3) _font.info.padding.left = to_int(list[3]);
 						}
 						{
 							auto spacing = info.attribute("spacing").as_string();
+							auto list = split(spacing, ',');
+							if (list.size() > 0) _font.info.spacing.horizontal = to_int(list[0]);
+							if (list.size() > 1) _font.info.spacing.vertical = to_int(list[1]);
 						}
 						_font.info.outline = info.attribute("outline").as_int();
 					}
