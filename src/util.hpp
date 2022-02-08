@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <charconv>
+#include <iostream>
 
 #include "SDL_stb_image.hpp"
 
