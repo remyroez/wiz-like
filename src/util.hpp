@@ -7,6 +7,8 @@
 #include <vector>
 #include <charconv>
 
+#include "SDL_stb_image.hpp"
+
 template<typename T>
 using SDL_Pointer = std::shared_ptr<T>;
 
@@ -25,7 +27,7 @@ DEFINE_MAKE(make_window, SDL_Window, SDL_CreateWindow, SDL_DestroyWindow);
 DEFINE_MAKE(make_renderer, SDL_Renderer, SDL_CreateRenderer, SDL_DestroyRenderer);
 DEFINE_MAKE(make_texture_from_surface, SDL_Texture, SDL_CreateTextureFromSurface, SDL_DestroyTexture);
 
-DEFINE_MAKE(load_bmp, SDL_Surface, SDL_LoadBMP, SDL_FreeSurface);
+DEFINE_MAKE(load_tex, SDL_Texture, SDL_LoadTexture, SDL_DestroyTexture);
 
 #define SDL_PrintError(NAME) { std::cerr << #NAME << ": " << SDL_GetError() << std::endl; }
 
@@ -82,6 +84,15 @@ int SDL_GetMouseLogicalState(SDL_Window *window, SDL_Renderer *renderer, int* x,
 	if (y) *y = logical_mouse_y;
 
 	return state;
+}
+
+SDL_Texture *SDL_LoadTexture(SDL_Renderer *renderer, const char *path) {
+	SDL_Texture* ptr = nullptr;
+	if (auto *surface = STB_IMG_Load(path)) {
+		ptr = SDL_CreateTextureFromSurface(renderer, surface);
+		SDL_FreeSurface(surface);
+	}
+	return ptr;
 }
 
 std::vector<std::string> split(const std::string& s, char delim) {
