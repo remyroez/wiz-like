@@ -1,6 +1,8 @@
 ﻿#ifndef CONSOLE_HPP_
 #define CONSOLE_HPP_
 
+#include <SDL.h>
+
 #include <memory>
 #include <algorithm>
 #include <vector>
@@ -32,13 +34,14 @@ public:
 
 		SDL_Rect current_rect = _rect;
 		int begin_x = _rect.x;
+
 		for (char32_t codepoint : string) {
 			if (codepoint == '\n') {
 				current_rect.x = begin_x;
 				current_rect.y += _cell.h;
 
 			} else {
-				p->put_char(renderer, current_rect.x, current_rect.y, codepoint);
+				p->put_char(renderer, current_rect.x, current_rect.y, codepoint, &_fg_color);
 				current_rect.x += _cell.w;
 			}
 
@@ -83,7 +86,7 @@ public:
 				current_rect.y += _cell.h;
 
 			} else {
-				p->put_char(renderer, current_rect.x, current_rect.y, codepoint);
+				p->put_char(renderer, current_rect.x, current_rect.y, codepoint, &_fg_color);
 				current_rect.x += _cell.w;
 			}
 
@@ -97,6 +100,11 @@ public:
 		}
 	}
 
+	void fill(SDL_Renderer *renderer) {
+		SDL_SetRenderDrawColor(renderer, _bg_color.r, _bg_color.g, _bg_color.b, 0xFF);
+		SDL_RenderFillRect(renderer, &_rect);
+	}
+
 	inline void current_font(const std::shared_ptr<font_set> &font_ptr) {
 		_font_ptr = font_ptr;
 	}
@@ -104,6 +112,11 @@ public:
 	inline void pos(int x, int y) { _rect.x = x; _rect.y = y; }
 	inline void size(int w, int h) { _rect.w = w; _rect.h = h; }
 	inline void cell(int w, int h) { _cell.w = w; _cell.h = h; }
+	inline void fg_color(const SDL_Color& color) { _fg_color = color; }
+	inline void bg_color(const SDL_Color &color) { _bg_color = color; }
+
+	inline const SDL_Rect &rect() const { return _rect; }
+	inline const SDL_Rect& cell() const { return _cell; }
 
 protected:
 	template<typename... Args>
@@ -117,6 +130,8 @@ private:
 	SDL_Rect _rect{ 0, 0, 320, 200 };
 	SDL_Rect _cell{ 0, 0, 8, 8 };
 	std::weak_ptr<font_set> _font_ptr;
+	SDL_Color _fg_color{ 0xFF, 0xFF, 0xFF, 0xFF };
+	SDL_Color _bg_color{ 0, 0, 0, 0xFF };
 };
 
 #endif // CONSOLE_HPP_

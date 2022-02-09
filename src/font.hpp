@@ -172,17 +172,19 @@ public:
 		return chara;
 	}
 
-	void put_char(SDL_Renderer* renderer, int x, int y, char32_t codepoint) {
+	void put_char(SDL_Renderer* renderer, int x, int y, char32_t codepoint, const SDL_Color* color = nullptr) {
 		if (auto* chara = get_char(codepoint)) {
-			put_char(renderer, x, y, *chara);
+			put_char(renderer, x, y, *chara, color);
 		}
 	}
 
-	void put_char(SDL_Renderer* renderer, int x, int y, const character& chara) {
+	void put_char(SDL_Renderer* renderer, int x, int y, const character& chara, const SDL_Color* color = nullptr) {
 		if (auto page = find_page(chara.page)) {
 			SDL_Rect src_rect{ chara.x, chara.y, chara.width, chara.height };
 			SDL_Rect dst_rect{ x + chara.x_offset, y + chara.y_offset, chara.width, chara.height };
-			SDL_RenderCopy(renderer, page.get(), &src_rect, &dst_rect);
+			auto* p = page.get();
+			if (color) SDL_SetTextureColorMod(p, color->r, color->g, color->b);
+			SDL_RenderCopy(renderer, p, &src_rect, &dst_rect);
 		}
 	}
 
@@ -220,11 +222,11 @@ public:
 		_fonts.push_back(newfont);
 	}
 
-	void put_char(SDL_Renderer* renderer, int x, int y, char32_t codepoint) {
+	void put_char(SDL_Renderer* renderer, int x, int y, char32_t codepoint, const SDL_Color *color = nullptr) {
 		font* target_font = nullptr;
 		character* chara = nullptr;
 		if (find_font(codepoint, target_font, chara)) {
-			target_font->put_char(renderer, x, y, *chara);
+			target_font->put_char(renderer, x, y, *chara, color);
 		}
 	}
 

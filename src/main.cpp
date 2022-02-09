@@ -39,10 +39,13 @@ public:
 			_font = std::make_shared<font_set>();
 			_font->load_font(renderer(), "assets/font/unscii.fnt");
 			_font->load_font(renderer(), "assets/font/misaki_gothic_2nd.fnt");
+
 			_console.current_font(_font);
-			_console.pos(0, 0);
-			_console.size(framebuffer_width, framebuffer_height);
-			_console.cell(8, 8);
+			_console.pos(cell_width, cell_height);
+			_console.size(framebuffer_width - cell_width * 2, framebuffer_height - cell_height * 2);
+			_console.cell(cell_width, cell_height);
+			_console.fg_color({0xFF, 0xFF, 0});
+			_console.bg_color({0, 0xFF, 0xFF});
 		}
 		return initialized();
 	}
@@ -63,13 +66,15 @@ protected:
 
 		SDL_GetMouseLogicalState(window(), renderer(), &target_rect.x, &target_rect.y);
 
+		SDL_SetRenderDrawColor(renderer(), 0x80, 0x80, 0x80, 0);
 		SDL_RenderClear(renderer());
-#if 0
+
 		if (_tex) {
 			SDL_RenderCopy(renderer(), _tex.get(), &src_rect, nullptr);
 			SDL_RenderCopy(renderer(), _tex.get(), &src_rect2, &target_rect);
 		}
-#endif
+
+		_console.fill(renderer());
 		_console.print(renderer(), target_rect.x, target_rect.y, u8"あいうえおかきくけこ\nハローワールドAAAテスト\nÅǢÅ");
 
 		static const SDL_Rect print_rect{
@@ -77,6 +82,8 @@ protected:
 			framebuffer_width, framebuffer_height
 		};
 		_console.print(renderer(), print_rect, u8"1234567890ABCDEFG");
+
+		_console.print(renderer(), u8"01234567890123456789012345678901234567890123456789");
 	}
 
 private:
