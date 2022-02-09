@@ -234,9 +234,33 @@ public:
 			if (codepoint == '\n') {
 				x = begin_x;
 				y += 8;
+
 			} else {
 				put_char(renderer, x, y, codepoint);
 				x += 8;
+			}
+		}
+	}
+
+	void print(SDL_Renderer* renderer, const SDL_Rect &rect, tiny_utf8::utf8_string string) {
+		SDL_Rect render_rect = rect;
+		int begin_x = rect.x;
+		for (char32_t codepoint : string) {
+			if (codepoint == '\n') {
+				render_rect.x = begin_x;
+				render_rect.y += 8;
+
+			} else {
+				put_char(renderer, render_rect.x, render_rect.y, codepoint);
+				render_rect.x += 8;
+			}
+
+			if (render_rect.x >= (rect.x + rect.w)) {
+				render_rect.x = begin_x;
+				render_rect.y += 8;
+			}
+			if (render_rect.y >= (rect.y + rect.h)) {
+				break;
 			}
 		}
 	}

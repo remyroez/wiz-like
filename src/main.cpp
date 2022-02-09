@@ -4,6 +4,7 @@
 #include "application.hpp"
 #include "util.hpp"
 #include "font.hpp"
+#include "console.hpp"
 
 #define SDL_STB_IMAGE_IMPLEMENTATION
 #include "SDL_stb_image.hpp"
@@ -35,8 +36,13 @@ public:
 			SDL_RenderSetLogicalSize(renderer(), framebuffer_width, framebuffer_height);
 			SDL_RenderSetIntegerScale(renderer(), SDL_TRUE);
 
-			_font.load_font(renderer(), "assets/font/unscii.fnt");
-			_font.load_font(renderer(), "assets/font/misaki_gothic_2nd.fnt");
+			_font = std::make_shared<font_set>();
+			_font->load_font(renderer(), "assets/font/unscii.fnt");
+			_font->load_font(renderer(), "assets/font/misaki_gothic_2nd.fnt");
+			_console.current_font(_font);
+			_console.pos(0, 0);
+			_console.size(framebuffer_width, framebuffer_height);
+			_console.cell(8, 8);
 		}
 		return initialized();
 	}
@@ -64,12 +70,19 @@ protected:
 			SDL_RenderCopy(renderer(), _tex.get(), &src_rect2, &target_rect);
 		}
 #endif
-		_font.print(renderer(), target_rect.x, target_rect.y, u8"あいうえおかきくけこ\nハローワールドAAAテスト\nÅǢÅ");
+		_console.print(renderer(), target_rect.x, target_rect.y, u8"あいうえおかきくけこ\nハローワールドAAAテスト\nÅǢÅ");
+
+		static const SDL_Rect print_rect{
+			framebuffer_width - 6 * cell_width - 1, 5 * cell_height - 1,
+			framebuffer_width, framebuffer_height
+		};
+		_console.print(renderer(), print_rect, u8"1234567890ABCDEFG");
 	}
 
 private:
 	SDL_Pointer<SDL_Texture> _tex;
-	font_set _font;
+	std::shared_ptr<font_set> _font;
+	console _console;
 };
 
 } // namespace game
