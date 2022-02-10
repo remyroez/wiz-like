@@ -8,6 +8,7 @@
 #include <charconv>
 #include <iostream>
 
+#include <tinyutf8.h>
 #include "SDL_stb_image.hpp"
 
 template<typename T>
@@ -119,6 +120,23 @@ int to_int(const std::string& str) {
 	if (auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value); ec == std::errc{}) {
 	}
 	return value;
+}
+
+std::vector<tiny_utf8::utf8_string> split_lines(const tiny_utf8::utf8_string &s) {
+	std::vector<tiny_utf8::utf8_string> lines;
+	tiny_utf8::utf8_string line;
+	for (const auto &codepoint : s) {
+		if ((codepoint == '\n') || (codepoint == '\r')) {
+			if (line.size() > 0) {
+				lines.push_back(line);
+				line.clear();
+			}
+
+		} else {
+			line += codepoint;
+		}
+	}
+	return std::move(lines);
 }
 
 #endif // UTIL_HPP_

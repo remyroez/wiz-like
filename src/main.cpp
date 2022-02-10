@@ -83,7 +83,9 @@ protected:
 		};
 		_console.print(renderer(), print_rect, u8"1234567890ABCDEFG");
 
+		_console.coord();
 		_console.print(renderer(), u8"01234567890123456789012345678901234567890123456789");
+		_console.print(renderer(), u8"ABCDE", console::option::inverse);
 	}
 
 private:
