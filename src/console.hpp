@@ -18,6 +18,8 @@ public:
 
 	inline void x(int n) { _rect.x = n; }
 	inline void y(int n) { _rect.y = n; }
+	inline void w(int n) { _rect.w = n; }
+	inline void h(int n) { _rect.h = n; }
 	inline void pos(int x, int y) { _rect.x = x; _rect.y = y; }
 	inline void size(int w, int h) { _rect.w = w; _rect.h = h; }
 	inline void coord(int x, int y) { _rect.x = x * _rect.w; _rect.y = y * _rect.h; }
@@ -26,6 +28,8 @@ public:
 
 	inline int x() const { return _rect.x; }
 	inline int y() const { return _rect.y; }
+	inline int w() const { return _rect.w; }
+	inline int h() const { return _rect.h; }
 	inline SDL_Point pos() const { return { x(), y() }; }
 
 	inline int coord_x() const { return _rect.x / _rect.w; }
@@ -45,6 +49,10 @@ public:
 	}
 	inline void advance_y(int y = 1) {
 		advance(0, y);
+	}
+	inline void next_line(int left) {
+		x(left);
+		advance_y();
 	}
 
 private:
@@ -71,21 +79,20 @@ public:
 
 		bool inverse = ((opt & option::inverse) != 0);
 		bool fill_cell_bg = ((opt & option::fill_cell_bg) != 0);
-
 		auto& put_color = inverse ? _bg_color : _fg_color;
 
 		for (char32_t codepoint : string) {
-			if (_cursor.x() >= right()) {
-				next_line();
-			}
-			if (_cursor.y() >= bottom()) {
-				break;
-			}
-
 			if (codepoint == '\n') {
 				next_line();
 
 			} else {
+				if (_cursor.x() >= right()) {
+					next_line();
+				}
+				if (_cursor.y() >= bottom()) {
+					break;
+				}
+
 				if (fill_cell_bg || inverse) fill_cell(renderer, inverse);
 				p->put_char(renderer, _cursor.x(), _cursor.y(), codepoint, &put_color);
 				_cursor.advance();
@@ -93,54 +100,62 @@ public:
 		}
 	}
 
-	void print(SDL_Renderer* renderer, int x, int y, tiny_utf8::utf8_string string) {
+	void print(SDL_Renderer* renderer, const tiny_utf8::utf8_string& string, int x, int y, option opt = option::none) {
 		SDL_Rect render_rect = _rect;
 		render_rect.x += x;
 		render_rect.y += y;
-		print(renderer, render_rect, string);
+		print(renderer, string, render_rect, opt);
 	}
 
-	void print(SDL_Renderer* renderer, const SDL_Rect &rect, tiny_utf8::utf8_string string) {
+	void print(SDL_Renderer* renderer, const tiny_utf8::utf8_string& string, const SDL_Rect &rect, option opt = option::none) {
 		auto p = current_font();
 		if (!p) return;
+
+		bool inverse = ((opt & option::inverse) != 0);
+		bool fill_cell_bg = ((opt & option::fill_cell_bg) != 0);
+		auto& put_color = inverse ? _bg_color : _fg_color;
 
 		// 描画範囲
 		SDL_Rect render_rect = rect;
 		render_rect.x += _rect.x;
 		render_rect.y += _rect.y;
 		{
-			auto base_right = _rect.x + _rect.w;
-			auto render_right = render_rect.x + render_rect.w;
-			if (render_right > base_right) {
-				render_rect.w -= (render_right - base_right);
+			auto temp_right = render_rect.x + render_rect.w;
+			if (temp_right >= right()) {
+				render_rect.w -= (temp_right - right());
 			}
 		}
+		auto render_right = render_rect.x + render_rect.w;
 		{
-			auto base_bottom = _rect.y + _rect.h;
-			auto render_bottom = render_rect.y + render_rect.h;
-			if (render_bottom > base_bottom) {
-				render_rect.h -= (render_bottom - base_bottom);
+			auto temp_bottom = render_rect.y + render_rect.h;
+			if (temp_bottom >= bottom()) {
+				render_rect.h -= (temp_bottom - bottom());
 			}
 		}
+		auto render_bottom = render_rect.y + render_rect.h;
 
-		SDL_Rect current_rect = render_rect;
-		int begin_x = render_rect.x;
+		auto local_cursor = _cursor;
+		local_cursor.pos(render_rect.x, render_rect.y);
+
+		if ((local_cursor.x() + local_cursor.w()) > render_right) return;
+
 		for (char32_t codepoint : string) {
 			if (codepoint == '\n') {
-				current_rect.x = begin_x;
-				current_rect.y += _cell.h;
+				local_cursor.next_line(render_rect.x);
 
 			} else {
-				p->put_char(renderer, current_rect.x, current_rect.y, codepoint, &_fg_color);
-				current_rect.x += _cell.w;
-			}
+				if ((local_cursor.x() + local_cursor.w()) > render_right) {
+					local_cursor.next_line(render_rect.x);
+				}
+				if ((local_cursor.y() + local_cursor.h()) > render_bottom) {
+					break;
+				}
 
-			if ((current_rect.x + _cell.w) >= (render_rect.x + render_rect.w)) {
-				current_rect.x = begin_x;
-				current_rect.y += _cell.h;
-			}
-			if ((current_rect.y + _cell.h) >= (render_rect.y + render_rect.h)) {
-				break;
+				if (fill_cell_bg || inverse) {
+					fill_cell(renderer, { local_cursor.x(), local_cursor.y(), local_cursor.w(), local_cursor.h() }, inverse);
+				}
+				p->put_char(renderer, local_cursor.x(), local_cursor.y(), codepoint, &_fg_color);
+				local_cursor.advance();
 			}
 		}
 	}
@@ -157,13 +172,20 @@ public:
 		SDL_RenderFillRect(renderer, &_cursor.rect());
 	}
 
+	void fill_cell(SDL_Renderer* renderer, const SDL_Rect& rect, bool inverse = false) {
+		auto& color = inverse ? _fg_color : _bg_color;
+		SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 0xFF);
+		SDL_RenderFillRect(renderer, &rect);
+	}
+
 	inline void current_font(const std::shared_ptr<font_set> &font_ptr) {
 		_font_ptr = font_ptr;
 	}
 
 	inline void pos(int x, int y) { _rect.x = x; _rect.y = y; }
-	inline void size(int w, int h) { _rect.w = w; _rect.h = h; }
 	inline void cell(int w, int h) { _cell.w = w; _cell.h = h; _cursor.size(w, h); }
+	inline void size(int w, int h) { _rect.w = w; _rect.h = h; }
+	inline void geom(int cols, int rows) { size(_cell.w * cols, _cell.h * rows); }
 
 	inline void fg_color(const SDL_Color& color) { _fg_color = color; }
 	inline void bg_color(const SDL_Color &color) { _bg_color = color; }
@@ -189,6 +211,38 @@ public:
 	inline void lf() { _cursor.advance_y(); }
 	inline void next_line() { cr(); lf(); }
 
+	inline void print(const tiny_utf8::utf8_string &string, const SDL_Rect &rect, option opt = option::none) {
+		_entries.push_back({ SDL_Rect{ rect.x * _cell.w, rect.y * _cell.h, rect.w * _cell.w, rect.h * _cell.h }, string, opt });
+	}
+
+	inline void print(const tiny_utf8::utf8_string& string, int x, int y, option opt = option::none) {
+		_entries.push_back({ SDL_Rect{ x, y, -1, -1 }, string, opt });
+	}
+
+	inline void print(const tiny_utf8::utf8_string& string, option opt = option::none) {
+		_entries.push_back({ SDL_Rect{ -1, -1, -1, -1 }, string, opt });
+	}
+
+	inline void cls() {
+		_entries.clear();
+	}
+
+	inline void flush(SDL_Renderer* renderer) {
+		fill(renderer);
+		for (const auto &entry : _entries) {
+			if (entry.rect.x < 0) {
+				print(renderer, entry.str, entry.opt);
+
+			} else if (entry.rect.w < 0) {
+				coord(entry.rect.x, entry.rect.y);
+				print(renderer, entry.str, entry.opt);
+
+			} else {
+				print(renderer, entry.str, entry.rect, entry.opt);
+			}
+		}
+	}
+
 protected:
 	template<typename... Args>
 	inline auto put_char(Args&&... args) {
@@ -197,6 +251,12 @@ protected:
 		}
 	}
 
+	struct entry {
+		SDL_Rect rect;
+		tiny_utf8::utf8_string str;
+		option opt;
+	};
+
 private:
 	cursor _cursor;
 	SDL_Rect _rect{ 0, 0, 320, 200 };
@@ -204,6 +264,8 @@ private:
 	std::weak_ptr<font_set> _font_ptr;
 	SDL_Color _fg_color{ 0xFF, 0xFF, 0xFF, 0xFF };
 	SDL_Color _bg_color{ 0, 0, 0, 0xFF };
+
+	std::vector<entry> _entries;
 };
 
 #endif // CONSOLE_HPP_

@@ -18,6 +18,8 @@ public:
 
 	static const int cell_width = 8;
 	static const int cell_height = 8;
+	static const int console_columns = 40;
+	static const int console_rows = 25;
 	static const int framebuffer_width = cell_width * 40;
 	static const int framebuffer_height = cell_height * 25;
 	static const int window_width = framebuffer_width * 2;
@@ -37,15 +39,27 @@ public:
 			SDL_RenderSetIntegerScale(renderer(), SDL_TRUE);
 
 			_font = std::make_shared<font_set>();
+			_font->load_font(renderer(), "assets/font/modern_dos.fnt");
 			_font->load_font(renderer(), "assets/font/unscii.fnt");
 			_font->load_font(renderer(), "assets/font/misaki_gothic_2nd.fnt");
 
 			_console.current_font(_font);
 			_console.pos(cell_width, cell_height);
-			_console.size(framebuffer_width - cell_width * 2, framebuffer_height - cell_height * 2);
 			_console.cell(cell_width, cell_height);
+			_console.geom(console_columns - 2, console_rows - 2);
 			_console.fg_color({0xFF, 0xFF, 0});
 			_console.bg_color({0, 0xFF, 0xFF});
+
+			_console.cls();
+			static const SDL_Rect print_rect{
+				1, 20,
+				5, 5
+			};
+			_console.print(u8"1234567890ABCDEFG", print_rect);
+
+			_console.print(u8"01234567890123456789012345678901234567890123456789", 0, 0);
+			_console.print(u8"ABCDE", console::option::inverse);
+
 		}
 		return initialized();
 	}
@@ -74,18 +88,9 @@ protected:
 			SDL_RenderCopy(renderer(), _tex.get(), &src_rect2, &target_rect);
 		}
 
-		_console.fill(renderer());
-		_console.print(renderer(), target_rect.x, target_rect.y, u8"あいうえおかきくけこ\nハローワールドAAAテスト\nÅǢÅ");
+		_console.flush(renderer());
+		_console.print(renderer(), u8"あいうえおかきくけこ\nハローワールドAAAテスト\nÅǢÅ", target_rect.x, target_rect.y);
 
-		static const SDL_Rect print_rect{
-			framebuffer_width - 6 * cell_width - 1, 5 * cell_height - 1,
-			framebuffer_width, framebuffer_height
-		};
-		_console.print(renderer(), print_rect, u8"1234567890ABCDEFG");
-
-		_console.coord();
-		_console.print(renderer(), u8"01234567890123456789012345678901234567890123456789");
-		_console.print(renderer(), u8"ABCDE", console::option::inverse);
 	}
 
 private:
