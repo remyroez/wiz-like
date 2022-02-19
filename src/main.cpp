@@ -6,8 +6,14 @@
 #include "font.hpp"
 #include "console.hpp"
 
+#include "imgui.h"
+#include "imgui_impl_sdl.h"
+#include "imgui_impl_sdlrenderer.h"
+
 #define SDL_STB_IMAGE_IMPLEMENTATION
 #include "SDL_stb_image.hpp"
+
+#include "generated/Silver.cpp"
 
 namespace {
 
@@ -28,15 +34,22 @@ public:
 	bool initialize() {
 		if (initialized()) {
 
-		} else if (application::initialize("wizlike", window_width, window_height, SDL_WINDOW_RESIZABLE, SDL_RENDERER_ACCELERATED)) {
+		} else if (application::initialize(
+			"wizlike",
+			window_width,
+			window_height,
+			SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI,
+			SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED
+		)
+		) {
 			if (auto bmp = SDL_LoadBMP("assets/test.bmp")) {
 				_tex = make_texture_from_surface(renderer(), bmp);
 				SDL_FreeSurface(bmp);
 			}
 
 			SDL_SetWindowMinimumSize(window(), framebuffer_width, framebuffer_height);
-			SDL_RenderSetLogicalSize(renderer(), framebuffer_width, framebuffer_height);
-			SDL_RenderSetIntegerScale(renderer(), SDL_TRUE);
+			//SDL_RenderSetLogicalSize(renderer(), framebuffer_width, framebuffer_height);
+			//SDL_RenderSetIntegerScale(renderer(), SDL_TRUE);
 
 			_font = std::make_shared<font_set>();
 			_font->load_font(renderer(), "assets/font/modern_dos.fnt");
@@ -60,12 +73,30 @@ public:
 			_console.print(u8"01234567890123456789012345678901234567890123456789", 0, 0);
 			_console.print(u8"ABCDE", console::option::inverse);
 
+			IMGUI_CHECKVERSION();
+			ImGui::CreateContext();
+			ImGui::StyleColorsDark();
+			ImGui_ImplSDL2_InitForSDLRenderer(window(), renderer());
+			ImGui_ImplSDLRenderer_Init(renderer());
+
+			ImGuiIO& io = ImGui::GetIO();
+			io.Fonts->AddFontFromMemoryCompressedTTF(
+				Silver_compressed_data,
+				Silver_compressed_size,
+				21,
+				nullptr,
+				io.Fonts->GetGlyphRangesJapanese()
+			);
 		}
 		return initialized();
 	}
 
 protected:
 	void finalize() {
+		ImGui_ImplSDLRenderer_Shutdown();
+		ImGui_ImplSDL2_Shutdown();
+		ImGui::DestroyContext();
+
 		_tex.reset();
 	}
 
@@ -91,6 +122,24 @@ protected:
 		_console.flush(renderer());
 		_console.print(renderer(), u8"あいうえおかきくけこ\nハローワールドAAAテスト\nÅǢÅ", target_rect.x, target_rect.y);
 
+		ImGui_ImplSDLRenderer_NewFrame();
+		ImGui_ImplSDL2_NewFrame();
+		ImGui::NewFrame();
+
+		static bool show_demo_window = true;
+		if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
+
+		ImGui::Begin(u8"Test Window");
+		ImGui::Checkbox(u8"Demo Window", &show_demo_window);
+		ImGui::Text(u8"Hello, World!");
+		ImGui::End();
+
+		ImGui::Render();
+		ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
+	}
+
+	virtual void poll_event() override {
+		ImGui_ImplSDL2_ProcessEvent(event());
 	}
 
 private:

@@ -40,3 +40,6 @@
 
 # .gitkeep
 !.gitkeep
+
+# imgui
+imgui.ini

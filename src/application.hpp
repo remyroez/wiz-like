@@ -52,6 +52,7 @@ protected:
 
 	virtual void update(float deltatime = 0.f) {}
 	virtual void draw() {}
+	virtual void poll_event() {}
 
 public:
 	int boot() {
@@ -61,9 +62,21 @@ public:
 			initial_ms = SDL_GetTicks();
 
 			while (SDL_PollEvent(&_event)) {
+				poll_event();
 				switch (_event.type) {
 				case SDL_QUIT:
 					_running = false;
+					break;
+				case SDL_WINDOWEVENT:
+					{
+						switch (_event.window.event) {
+						case SDL_WINDOWEVENT_CLOSE:
+							if (_event.window.windowID == SDL_GetWindowID(window())) {
+								_running = false;
+							}
+							break;
+						}
+					}
 					break;
 				}
 			}
