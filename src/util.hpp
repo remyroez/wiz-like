@@ -28,6 +28,7 @@ inline auto NAME(Args&&... args) { \
 DEFINE_MAKE(make_window, SDL_Window, SDL_CreateWindow, SDL_DestroyWindow);
 DEFINE_MAKE(make_renderer, SDL_Renderer, SDL_CreateRenderer, SDL_DestroyRenderer);
 DEFINE_MAKE(make_texture_from_surface, SDL_Texture, SDL_CreateTextureFromSurface, SDL_DestroyTexture);
+DEFINE_MAKE(make_texture, SDL_Texture, SDL_CreateTexture, SDL_DestroyTexture);
 
 DEFINE_MAKE(load_tex, SDL_Texture, SDL_LoadTexture, SDL_DestroyTexture);
 

@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <vector>
 #include <string>
+#include <optional>
+
 #include <tinyutf8.h>
 
 #include "util.hpp"
@@ -101,7 +103,7 @@ public:
 	}
 
 	void print(SDL_Renderer* renderer, const tiny_utf8::utf8_string& string, int x, int y, option opt = option::none) {
-		SDL_Rect render_rect = _rect;
+		SDL_Rect render_rect = _size;
 		render_rect.x += x;
 		render_rect.y += y;
 		print(renderer, string, render_rect, opt);
@@ -117,19 +119,19 @@ public:
 
 		// 描画範囲
 		SDL_Rect render_rect = rect;
-		render_rect.x += _rect.x;
-		render_rect.y += _rect.y;
+		//render_rect.x += _rect.x;
+		//render_rect.y += _rect.y;
 		{
 			auto temp_right = render_rect.x + render_rect.w;
-			if (temp_right >= right()) {
-				render_rect.w -= (temp_right - right());
+			if (temp_right >= w()) {
+				render_rect.w -= (temp_right - w());
 			}
 		}
 		auto render_right = render_rect.x + render_rect.w;
 		{
 			auto temp_bottom = render_rect.y + render_rect.h;
-			if (temp_bottom >= bottom()) {
-				render_rect.h -= (temp_bottom - bottom());
+			if (temp_bottom >= h()) {
+				render_rect.h -= (temp_bottom - h());
 			}
 		}
 		auto render_bottom = render_rect.y + render_rect.h;
@@ -163,7 +165,7 @@ public:
 	void fill(SDL_Renderer *renderer, bool inverse = false) {
 		auto& color = inverse ? _fg_color : _bg_color;
 		SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 0xFF);
-		SDL_RenderFillRect(renderer, &_rect);
+		SDL_RenderFillRect(renderer, &_size);
 	}
 
 	void fill_cell(SDL_Renderer* renderer, bool inverse = false) {
@@ -184,14 +186,22 @@ public:
 
 	inline void pos(int x, int y) { _rect.x = x; _rect.y = y; }
 	inline void cell(int w, int h) { _cell.w = w; _cell.h = h; _cursor.size(w, h); }
-	inline void size(int w, int h) { _rect.w = w; _rect.h = h; }
+	inline void size(int w, int h) { _rect.w = _size.w = w; _rect.h = _size.h = h; }
 	inline void geom(int cols, int rows) { size(_cell.w * cols, _cell.h * rows); }
+
+	inline void scale(int s) { _scale = s; }
+	inline auto scale() const { return _scale; }
 
 	inline void fg_color(const SDL_Color& color) { _fg_color = color; }
 	inline void bg_color(const SDL_Color &color) { _bg_color = color; }
 
 	inline const SDL_Rect &rect() const { return _rect; }
 	inline const SDL_Rect& cell() const { return _cell; }
+
+	inline int x() const { return _rect.x; }
+	inline int y() const { return _rect.y; }
+	inline int w() const { return _size.w; }
+	inline int h() const { return _size.h; }
 
 	inline int left() const { return _rect.x; }
 	inline int top() const { return _rect.y; }
@@ -203,11 +213,9 @@ public:
 
 	inline void coord(int coord_x = 0, int corrd_y = 0) {
 		_cursor.coord(coord_x, corrd_y);
-		_cursor.x(_cursor.x() + left());
-		_cursor.y(_cursor.y() + top());
 	}
 
-	inline void cr() { _cursor.x(left()); }
+	inline void cr() { _cursor.x(0); }
 	inline void lf() { _cursor.advance_y(); }
 	inline void next_line() { cr(); lf(); }
 
@@ -227,7 +235,31 @@ public:
 		_entries.clear();
 	}
 
+	inline void begin(SDL_Renderer* renderer) {
+		if (!_buffer) {
+			_buffer = make_texture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w(), h());
+		}
+		if (_before_tex.has_value()) return;
+		_before_tex = SDL_GetRenderTarget(renderer);
+		SDL_SetRenderTarget(renderer, tex());
+	}
+
+	inline void end(SDL_Renderer* renderer) {
+		if (!_before_tex.has_value()) return;
+		SDL_SetRenderTarget(renderer, _before_tex.value_or(nullptr));
+		if (scale() <= 1) {
+			SDL_RenderCopy(renderer, tex(), NULL, &_rect);
+
+		} else {
+			SDL_Rect scaled{ x(), y(), w() * scale(), h() * scale() };
+			SDL_RenderCopy(renderer, tex(), NULL, &scaled);
+		}
+		_before_tex.reset();
+	}
+
 	inline void flush(SDL_Renderer* renderer) {
+		begin(renderer);
+		coord();
 		fill(renderer);
 		for (const auto &entry : _entries) {
 			if (entry.rect.x < 0) {
@@ -242,6 +274,8 @@ public:
 			}
 		}
 	}
+
+	inline SDL_Texture* tex() const { return _buffer.get(); }
 
 protected:
 	template<typename... Args>
@@ -259,11 +293,17 @@ protected:
 
 private:
 	cursor _cursor;
+	SDL_Rect _size{ 0, 0, 320, 200 };
 	SDL_Rect _rect{ 0, 0, 320, 200 };
 	SDL_Rect _cell{ 0, 0, 8, 8 };
+	int _scale = 1;
+
 	std::weak_ptr<font_set> _font_ptr;
 	SDL_Color _fg_color{ 0xFF, 0xFF, 0xFF, 0xFF };
 	SDL_Color _bg_color{ 0, 0, 0, 0xFF };
+
+	SDL_Pointer<SDL_Texture> _buffer;
+	std::optional<SDL_Texture*> _before_tex;
 
 	std::vector<entry> _entries;
 };

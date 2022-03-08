@@ -57,9 +57,9 @@ public:
 			_font->load_font(renderer(), "assets/font/misaki_gothic_2nd.fnt");
 
 			_console.current_font(_font);
-			_console.pos(cell_width, cell_height);
+			_console.pos(cell_width*5, cell_height*3);
 			_console.cell(cell_width, cell_height);
-			_console.geom(console_columns - 2, console_rows - 2);
+			_console.geom(console_columns, console_rows);
 			_console.fg_color({0xFF, 0xFF, 0});
 			_console.bg_color({0, 0xFF, 0xFF});
 
@@ -109,7 +109,9 @@ protected:
 		static SDL_Rect src_rect2{ 0, 0, 32, 32 };
 		static SDL_Rect target_rect{ 0, 0, 32, 32 };
 
-		SDL_GetMouseLogicalState(window(), renderer(), &target_rect.x, &target_rect.y);
+		//SDL_GetMouseLogicalState(window(), renderer(), &target_rect.x, &target_rect.y);
+
+		int state = SDL_GetMouseState(&target_rect.x, &target_rect.y);
 
 		SDL_SetRenderDrawColor(renderer(), 0x80, 0x80, 0x80, 0);
 		SDL_RenderClear(renderer());
@@ -118,9 +120,19 @@ protected:
 			SDL_RenderCopy(renderer(), _tex.get(), &src_rect, nullptr);
 			SDL_RenderCopy(renderer(), _tex.get(), &src_rect2, &target_rect);
 		}
-
+		{
+			int window_w, window_h;
+			SDL_GetWindowSize(window(), &window_w, &window_h);
+			_console.scale(std::min(window_w / _console.w(), window_h / _console.h()));
+			_console.pos(
+				(window_w - _console.w() * _console.scale()) / 2,
+				(window_h - _console.h() * _console.scale()) / 2
+			);
+		}
+		_console.begin(renderer());
 		_console.flush(renderer());
-		_console.print(renderer(), u8"あいうえおかきくけこ\nハローワールドAAAテスト\nÅǢÅ", target_rect.x, target_rect.y);
+		_console.print(renderer(), u8"あいうえおかきくけこ\nハローワールドAAAテスト\nÅǢÅ", (target_rect.x - _console.x()) / _console.scale(), (target_rect.y - _console.y()) / _console.scale());
+		_console.end(renderer());
 
 		ImGui_ImplSDLRenderer_NewFrame();
 		ImGui_ImplSDL2_NewFrame();
@@ -132,6 +144,7 @@ protected:
 		ImGui::Begin(u8"Test Window");
 		ImGui::Checkbox(u8"Demo Window", &show_demo_window);
 		ImGui::Text(u8"Hello, World!");
+		ImGui::Text(u8"X = %d\nY = %d", target_rect.x - _console.x(), target_rect.y - _console.y());
 		ImGui::End();
 
 		ImGui::Render();
